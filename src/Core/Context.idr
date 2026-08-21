@@ -68,6 +68,7 @@ initCtxtS s
             , branchDepth = 0
             , staging = empty
             , visibleNS = [partialEvalNS]
+            , qualifiedOnlyNS = []
             , allPublic = False
             , inlineOnly = False
             , hidden = empty
@@ -748,6 +749,7 @@ HasNames Error where
     = ValidCase fc <$> full gam rho <*> either (map Left . full gam) (map Right . full gam) x
   full gam (UndefinedName fc n) = UndefinedName fc <$> full gam n
   full gam (InvisibleName fc n mns) = InvisibleName fc <$> full gam n <*> pure mns
+  full gam (NotInScopeQualified fc n (sn, ns)) = NotInScopeQualified fc <$> full gam n <*> (\sn' => (sn', ns)) <$> full gam sn
   full gam (BadTypeConType fc n) = BadTypeConType fc <$> full gam n
   full gam (BadDataConType fc n n') = BadDataConType fc <$> full gam n <*> full gam n'
   full gam (NotCovering fc n cov) = NotCovering fc <$> full gam n <*> full gam cov
@@ -847,6 +849,9 @@ HasNames Error where
     = ValidCase fc <$> resolved gam rho <*> either (map Left . resolved gam) (map Right . resolved gam) x
   resolved gam (UndefinedName fc n) = UndefinedName fc <$> resolved gam n
   resolved gam (InvisibleName fc n mns) = InvisibleName fc <$> resolved gam n <*> pure mns
+  resolved gam (NotInScopeQualified fc n (sn, ns))
+    = NotInScopeQualified fc <$> resolved gam n
+        <*> (\sn' => (sn', ns)) <$> resolved gam sn
   resolved gam (BadTypeConType fc n) = BadTypeConType fc <$> resolved gam n
   resolved gam (BadDataConType fc n n') = BadDataConType fc <$> resolved gam n <*> resolved gam n'
   resolved gam (NotCovering fc n cov) = NotCovering fc <$> resolved gam n <*> resolved gam cov
@@ -1026,6 +1031,9 @@ record Defs where
      -- ^ interface hashes of imported modules
   imported : List (ModuleIdent, Bool, Namespace)
      -- ^ imported modules, whether to rexport, as namespace
+  qualifiedImports : List (ModuleIdent, Bool)
+     -- ^ whether each entry of `imported` was a `qualified` import,
+     -- paired by position and kept in lockstep by `addImported`
   allImported : List (String, (ModuleIdent, Bool, Namespace))
      -- ^ all imported filenames/namespaces, just to avoid loading something
      -- twice unnecessarily (this is a record of all the things we've
@@ -1098,6 +1106,7 @@ initDefs
            , ifaceHash = 5381
            , importHashes = []
            , imported = []
+           , qualifiedImports = []
            , allImported = []
            , cgdirectives = []
            , toCompileCase = []
@@ -1965,8 +1974,10 @@ getNestedNS
 -- "import X as [current namespace]")
 export
 addImported : {auto c : Ref Ctxt Defs} ->
-              (ModuleIdent, Bool, Namespace) -> Core ()
-addImported mod = update Ctxt { imported $= (mod ::) }
+              (ModuleIdent, Bool, Bool, Namespace) -> Core ()
+addImported (m, reexp, qual, as)
+    = update Ctxt { imported $= ((m, reexp, as) ::)
+                  , qualifiedImports $= ((m, qual) ::) }
 
 export
 getImported : {auto c : Ref Ctxt Defs} ->
@@ -2049,6 +2060,22 @@ export
 setVisible : {auto c : Ref Ctxt Defs} ->
              Namespace -> Core ()
 setVisible nspace = update Ctxt { gamma->visibleNS $= (nspace ::) }
+
+-- Record a namespace as imported `qualified`, so that its names are only
+-- accessible via their qualified form (never unqualified).
+export
+setQualifiedOnly : {auto c : Ref Ctxt Defs} ->
+                   Namespace -> Core ()
+setQualifiedOnly nspace = update Ctxt { gamma->qualifiedOnlyNS $= (nspace ::) }
+
+-- Is the namespace imported qualified-only (i.e. its names must not be
+-- resolved unqualified)?
+export
+isQualifiedOnly : {auto c : Ref Ctxt Defs} ->
+                  Namespace -> Core Bool
+isQualifiedOnly nspace
+    = do defs <- get Ctxt
+         pure (any (\q => isParentOf q nspace) (qualifiedOnlyNS (gamma defs)))
 
 export
 getVisible : {auto c : Ref Ctxt Defs} ->

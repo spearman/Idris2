@@ -1,0 +1,90 @@
+1/2: Building Mod (Mod.idr)
+2/2: Building Qual (Qual.idr)
+Qual> Mod.foo : Nat
+Qual> Mod.bar : Nat
+Qual> Mod.Inside.fact : Nat -> Nat
+Qual> 1
+Qual> 24
+Qual> Bye for now!
+2/2: Building QualAs (QualAs.idr)
+QualAs> Alias.foo : Nat
+QualAs> Alias.bar : Nat
+QualAs> Alias.Inside.fact : Nat -> Nat
+QualAs> 1
+QualAs> 24
+QualAs> Bye for now!
+2/2: Building BadUnq (BadUnq.idr)
+Error: While processing right hand side of bad. Name foo is not in scope: import was qualified.
+
+BadUnq:6:7--6:10
+ 2 |
+ 3 | import qualified Mod
+ 4 |
+ 5 | bad : Nat
+ 6 | bad = foo
+           ^^^
+
+Perhaps use 'Mod.foo' (imported from Mod).
+2/2: Building BadOrig (BadOrig.idr)
+Error: While processing right hand side of bad. Name Mod.foo is not in scope: import was qualified.
+
+BadOrig:6:7--6:14
+ 2 |
+ 3 | import qualified Mod as Alias
+ 4 |
+ 5 | bad : Nat
+ 6 | bad = Mod.foo
+           ^^^^^^^
+
+Perhaps use 'Alias.foo' (imported from Mod).
+2/2: Building BadUnqAs (BadUnqAs.idr)
+Error: While processing right hand side of bad. Name foo is not in scope: import was qualified.
+
+BadUnqAs:6:7--6:10
+ 2 |
+ 3 | import qualified Mod as Alias
+ 4 |
+ 5 | bad : Nat
+ 6 | bad = foo
+           ^^^
+
+Perhaps use 'Alias.foo' (imported from Mod).
+2/2: Building BadPriv (BadPriv.idr)
+Error: While processing right hand side of bad. Name Mod.secret is private.
+
+BadPriv:6:7--6:17
+ 2 |
+ 3 | import qualified Mod
+ 4 |
+ 5 | bad : Nat
+ 6 | bad = Mod.secret
+           ^^^^^^^^^^
+
+Suggestion: add an explicit export or public export modifier. By default, all names are private in namespace blocks.
+1/2: Building Nested.Deep (Nested/Deep.idr)
+2/2: Building BadAbbrev (BadAbbrev.idr)
+Error: While processing right hand side of bad. Name Deep.foo is not in scope: import was qualified.
+
+BadAbbrev:6:7--6:15
+ 2 |
+ 3 | import qualified Nested.Deep
+ 4 |
+ 5 | bad : Nat
+ 6 | bad = Deep.foo
+           ^^^^^^^^
+
+Perhaps use 'Nested.Deep.foo' (imported from Nested.Deep).
+2/3: Building Reexport (Reexport.idr)
+3/3: Building UseReexport (UseReexport.idr)
+3/3: Building UseReexportBad (UseReexportBad.idr)
+Error: While processing right hand side of bad. Name foo is not in scope: import was qualified.
+
+UseReexportBad:6:7--6:10
+ 2 |
+ 3 | import Reexport
+ 4 |
+ 5 | bad : Nat
+ 6 | bad = foo
+           ^^^
+
+Perhaps use 'Mod.foo' (imported from Mod).

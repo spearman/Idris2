@@ -62,6 +62,7 @@ Eq Error where
   ValidCase fc1 rho1 x1 == ValidCase fc2 rho2 x2 = fc1 == fc2
   UndefinedName fc1 n1 == UndefinedName fc2 n2 = fc1 == fc2 && n1 == n2
   InvisibleName fc1 n1 x1 == InvisibleName fc2 n2 x2 = fc1 == fc2 && n1 == n2 && x1 == x2
+  NotInScopeQualified fc1 n1 s1 == NotInScopeQualified fc2 n2 s2 = fc1 == fc2 && n1 == n2 && s1 == s2
   BadTypeConType fc1 n1 == BadTypeConType fc2 n2 = fc1 == fc2 && n1 == n2
   BadDataConType fc1 n1 m1 == BadDataConType fc2 n2 m2 = fc1 == fc2 && n1 == n2 && m1 == m2
   NotCovering fc1 n1 x1 == NotCovering fc2 n2 x2 = fc1 == fc2 && n1 == n2
@@ -373,6 +374,11 @@ perrorRaw (InvisibleName fc x Nothing)
     = pure $ errorDesc ("Name" <++> code (pretty0 x) <++> reflow "is private.") <+> line <+> !(ploc fc)
         <+> line <+> reflow "Suggestion: add an explicit" <++> keyword "export" <++> "or" <++> keyword ("public" <++> "export")
         <++> reflow "modifier. By default, all names are" <++> keyword "private" <++> reflow "in namespace blocks."
+perrorRaw (NotInScopeQualified fc x (s, origNS))
+    = pure $ errorDesc ("Name" <++> code (pretty0 x) <++> reflow "is not in scope: import was qualified.")
+        <+> line <+> !(ploc fc)
+        <+> line <+> reflow "Perhaps use" <++> enclose "'" "'" (code (pretty0 s))
+        <++> parens (reflow "imported from" <++> code (pretty0 origNS)) <+> dot
 perrorRaw (BadTypeConType fc n)
     = pure $ errorDesc (reflow "Return type of" <++> code (pretty0 n) <++> reflow "must be" <++> code "Type"
         <+> dot) <+> line <+> !(ploc fc)

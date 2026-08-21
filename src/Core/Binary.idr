@@ -25,7 +25,7 @@ import public Libraries.Utils.Binary
 ||| version number if you're changing the version more than once in the same day.
 export
 ttcVersion : Int
-ttcVersion = 2025_08_16_00
+ttcVersion = 2026_08_20_00
 
 export
 checkTTCVersion : String -> Int -> Int -> Core ()
@@ -44,7 +44,7 @@ record TTCFile extra where
   userHoles : List Name
   autoHints : List (Name, Bool)
   typeHints : List (Name, Name, Bool)
-  imported : List (ModuleIdent, Bool, Namespace)
+  imported : List (ModuleIdent, Bool, Bool, Namespace)
   nextVar : Int
   currentNS : Namespace
   nestedNS : List Namespace
@@ -316,7 +316,8 @@ writeToTTC extradata sourceFileName ttcFileName
                               (keys (userHoles defs))
                               (saveAutoHints defs)
                               (saveTypeHints defs)
-                              (imported defs)
+                              (zipWith (\(m, reexp, as), (_, qual) => (m, reexp, qual, as))
+                                       (imported defs) (qualifiedImports defs))
                               (nextName ust)
                               (currentNS defs)
                               (nestedNS defs)
@@ -463,7 +464,7 @@ readFromTTC : TTC extra =>
               (modNS : ModuleIdent) -> -- module namespace
               (importAs : Namespace) -> -- namespace to import as
               Core (Maybe (extra, Int,
-                           List (ModuleIdent, Bool, Namespace)))
+                           List (ModuleIdent, Bool, Bool, Namespace)))
 readFromTTC nestedns loc reexp fname modNS importAs
     = do defs <- get Ctxt
          -- If it's already in the context, with the same visibility flag,

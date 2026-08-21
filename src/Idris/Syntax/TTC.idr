@@ -52,18 +52,20 @@ TTC Fixity where
 
 export
 TTC Import where
-  toBuf (MkImport loc reexport path nameAs)
+  toBuf (MkImport loc reexport path nameAs qualified)
     = do toBuf loc
          toBuf reexport
          toBuf path
          toBuf nameAs
+         toBuf qualified
 
   fromBuf
     = do loc <- fromBuf
          reexport <- fromBuf
          path <- fromBuf
          nameAs <- fromBuf
-         pure (MkImport loc reexport path nameAs)
+         qualified <- fromBuf
+         pure (MkImport loc reexport path nameAs qualified)
 
 export
 TTC BindingModifier where

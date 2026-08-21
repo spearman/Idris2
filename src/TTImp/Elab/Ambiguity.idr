@@ -77,7 +77,7 @@ expandAmbigName mode nest env orig args (IVar fc x) exp
     visible (n, i, def)
         = do let NS ns x = fullname def
                  | _ => pure True
-             if !(isVisible ns)
+             if !(isVisible ns) && not !(isQualifiedOnly ns)
                 then pure $ visibleInAny (!getNS :: !getNestedNS) (NS ns x)
                                          (collapseDefault $ visibility def)
                 else pure False

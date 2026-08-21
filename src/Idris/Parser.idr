@@ -1988,14 +1988,15 @@ import_ : OriginDesc -> IndentInfo -> Rule Import
 import_ fname indents
     = do b <- bounds (do decoratedKeyword fname "import"
                          reexp <- option False (decoratedKeyword fname "public" $> True)
+                         qual <- option False (decorate fname Keyword $ exactIdent "qualified" $> True)
                          ns <- decorate fname Module $ mustWork moduleIdent
                          nsAs <- option (miAsNamespace ns)
                                         (do decorate fname Keyword $ exactIdent "as"
                                             decorate fname Namespace $ mustWork namespaceId)
-                         pure (reexp, ns, nsAs))
+                         pure (reexp, qual, ns, nsAs))
          atEnd indents
-         (reexp, ns, nsAs) <- pure b.val
-         pure (MkImport (boundToFC fname b) reexp ns nsAs)
+         (reexp, qual, ns, nsAs) <- pure b.val
+         pure (MkImport (boundToFC fname b) reexp ns nsAs qual)
 
 export
 progHdr : OriginDesc -> EmptyRule Module

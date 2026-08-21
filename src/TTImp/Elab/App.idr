@@ -22,16 +22,47 @@ import Libraries.Data.WithDefault
 
 %default covering
 
+-- Check that a name is visible, given the name as written by the user
+-- (`requested`) and the fully qualified name it resolves to (`full`).
+-- For an `import qualified`-only namespace, the name is only accessible
+-- via an explicitly qualified alias namespace that is itself visible:
+-- unqualified access, or access via the original (non-visible) namespace,
+-- is rejected.
 checkVisibleNS : {auto c : Ref Ctxt Defs} ->
-                 FC -> Name -> Visibility -> Core ()
-checkVisibleNS fc (NS ns x) vis
-    = if !(isVisible ns)
-         then if !isAllPublic
-                       || visibleInAny (!getNS :: !getNestedNS) (NS ns x) vis
-                 then pure ()
-                 else throw $ InvisibleName fc (NS ns x) Nothing
-         else throw $ InvisibleName fc (NS ns x) (Just ns)
-checkVisibleNS _ _ _ = pure ()
+                 FC -> (requested : Name) -> Name -> Visibility -> Core ()
+checkVisibleNS fc requested full@(NS ns x) vis
+    = if !(isQualifiedOnly ns)
+         then case requested of
+                   -- `reqns` is the qualifier as the user wrote it. Unlike
+                   -- ordinary `as` aliasing, a `qualified` alias must be
+                   -- used in full -- no suffix abbreviation -- so we check
+                   -- it directly, rather than via the def's real namespace
+                   -- `ns` as the branch below does.
+                   NS reqns _ => if !(isVisible reqns)
+                                    then checkExportVisible
+                                    else notInScopeQualified
+                   _ => notInScopeQualified
+         else if !(isVisible ns)
+                 then checkExportVisible
+                 else throw $ InvisibleName fc full (Just ns)
+  where
+    checkExportVisible : Core ()
+    checkExportVisible
+        = if !isAllPublic
+               || visibleInAny (!getNS :: !getNestedNS) full vis
+             then pure ()
+             else throw $ InvisibleName fc full Nothing
+
+    -- Suggest the qualified form. If the original module namespace is
+    -- visible (e.g. `import qualified M`), suggest `M.x`. Otherwise
+    -- (e.g. `import qualified M as N`), look up the alias via the
+    -- context's possibles map.
+    notInScopeQualified : Core ()
+    notInScopeQualified
+        = if !(isVisible ns)
+             then throw $ NotInScopeQualified fc requested (full, ns)
+             else throw $ NotInScopeQualified fc requested (!(aliasName full), ns)
+checkVisibleNS _ _ _ _ = pure ()
 
 onLHS : ElabMode -> Bool
 onLHS (InLHS _) = True
@@ -71,7 +102,7 @@ getNameType elabMode rigc env fc x
               do defs <- get Ctxt
                  [(pname, i, def)] <- lookupCtxtName x (gamma defs)
                       | ns => ambiguousName fc x (map fst ns)
-                 checkVisibleNS fc (fullname def) (collapseDefault $ visibility def)
+                 checkVisibleNS fc x (fullname def) (collapseDefault $ visibility def)
                  when (not $ onLHS elabMode) $
                    checkDeprecation fc def
                  rigSafe (multiplicity def) rigc
@@ -126,7 +157,7 @@ getVarType elabMode rigc nest env fc x
                              tm = tmf fc nt
                              tyenv = useVars (getArgs tm)
                                              (embed (type ndef)) in
-                             do checkVisibleNS fc (fullname ndef) (collapseDefault $ visibility ndef)
+                             do checkVisibleNS fc n' (fullname ndef) (collapseDefault $ visibility ndef)
                                 logTerm "elab" 5 ("Type of " ++ show n') tyenv
                                 logTerm "elab" 5 ("Expands to") tm
                                 log "elab" 5 $ "Arg length " ++ show arglen

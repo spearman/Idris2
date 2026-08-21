@@ -107,6 +107,12 @@ data Error : Type where
 
      UndefinedName : FC -> Name -> Error
      InvisibleName : FC -> Name -> Maybe Namespace -> Error
+
+     -- | Name is not in scope unqualified because it was imported with
+     -- `import qualified`.  Carries the name as written by the user and
+     -- a suggestion for the correct qualified form.
+     NotInScopeQualified : FC -> (requested : Name) ->
+                                 (suggestion : (Name, Namespace)) -> Error
      BadTypeConType : FC -> Name -> Error
      BadDataConType : FC -> Name -> Name -> Error
      NotCovering : FC -> Name -> Covering -> Error
@@ -256,6 +262,9 @@ Show Error where
        = show fc ++ ":Name " ++ show x ++ " is inaccessible since " ++
          show ns ++ " is not explicitly imported"
   show (InvisibleName fc x _) = show fc ++ ":Name " ++ show x ++ " is private"
+  show (NotInScopeQualified fc x (s, origNS))
+       = show fc ++ ":Name " ++ show x ++ " is not in scope: import was qualified"
+         ++ ". Perhaps use '" ++ show s ++ "' (imported from " ++ show origNS ++ ")"
   show (BadTypeConType fc n)
        = show fc ++ ":Return type of " ++ show n ++ " must be Type"
   show (BadDataConType fc n fam)
@@ -441,6 +450,7 @@ getErrorLoc (WhenUnifying loc _ _ _ _ _) = Just loc
 getErrorLoc (ValidCase loc _ _) = Just loc
 getErrorLoc (UndefinedName loc _) = Just loc
 getErrorLoc (InvisibleName loc _ _) = Just loc
+getErrorLoc (NotInScopeQualified loc _ _) = Just loc
 getErrorLoc (BadTypeConType loc _) = Just loc
 getErrorLoc (BadDataConType loc _ _) = Just loc
 getErrorLoc (NotCovering loc _ _) = Just loc
@@ -534,6 +544,7 @@ killErrorLoc (WhenUnifying fc x y z w err) = WhenUnifying emptyFC x y z w (killE
 killErrorLoc (ValidCase fc x y) = ValidCase emptyFC x y
 killErrorLoc (UndefinedName fc x) = UndefinedName emptyFC x
 killErrorLoc (InvisibleName fc x y) = InvisibleName emptyFC x y
+killErrorLoc (NotInScopeQualified fc x y) = NotInScopeQualified emptyFC x y
 killErrorLoc (BadTypeConType fc x) = BadTypeConType emptyFC x
 killErrorLoc (BadDataConType fc x y) = BadDataConType emptyFC x y
 killErrorLoc (NotCovering fc x y) = NotCovering emptyFC x y

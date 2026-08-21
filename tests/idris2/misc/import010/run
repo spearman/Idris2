@@ -1,0 +1,11 @@
+. ../../../testutils.sh
+
+idris2 Qual.idr < input
+idris2 QualAs.idr < input_as
+check BadUnq.idr || true
+check BadOrig.idr || true
+check BadUnqAs.idr || true
+check BadPriv.idr || true
+check BadAbbrev.idr || true
+check UseReexport.idr
+check UseReexportBad.idr || true

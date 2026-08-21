@@ -36,6 +36,18 @@ should target this file (`CHANGELOG_NEXT`).
     and
     light & dark modes.
 
+### Language changes
+
+* Added `import qualified` (and `import [public] qualified M [as N]`), mirroring
+  Haskell's qualified import syntax. A qualified import only brings names into
+  scope under their (possibly aliased) namespace qualifier, never unqualified.
+  In particular:
+  - `import qualified M` makes `M.foo` available but hides unqualified `foo`;
+  - `import qualified M as N` makes only `N.foo` available (`M.foo` and
+    unqualified `foo` are both hidden);
+  - `public` may be combined with `qualified` to re-export the names under their
+    qualifier.
+
 ### Compiler changes
 
 * Fixed ill-typed program where a typed lambda would not have its type checked #3771

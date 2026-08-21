@@ -450,8 +450,9 @@ renderWithDecorations f doc =
 
 export
 prettyImport : Import -> Doc IdrisSyntax
-prettyImport (MkImport loc reexport path nameAs)
+prettyImport (MkImport loc reexport path nameAs qualified)
   = keyword "import"
     <+> ifThenElse reexport (space <+> keyword "public") ""
+    <+> ifThenElse qualified (space <+> keyword "qualified") ""
     <++> pretty0 path
     <+> ifThenElse (miAsNamespace path /= nameAs) (space <+> keyword "as" <++> pretty0 nameAs) ""
