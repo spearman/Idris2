@@ -761,13 +761,15 @@ record Import where
   reexport : Bool
   path : ModuleIdent
   nameAs : Namespace
+  qualified : Bool
 
 export
 Show Import where
-  show (MkImport loc reexport path nameAs)
+  show (MkImport loc reexport path nameAs qualified)
     = unwords $ catMaybes
       [ Just "import"
       , "public" <$ guard reexport
+      , "qualified" <$ guard qualified
       , Just (show path)
       , ("as " ++ show nameAs) <$ guard (miAsNamespace path /= nameAs)
       ]

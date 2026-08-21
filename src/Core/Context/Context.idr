@@ -424,6 +424,9 @@ record Context where
     -- access in a program - in all other cases, we'll assume everything is
     -- visible
     visibleNS : List Namespace
+    -- Namespaces imported with `import qualified`: their names are
+    -- accessible only via their qualified form, never unqualified.
+    qualifiedOnlyNS : List Namespace
     allPublic : Bool -- treat everything as public. This is intended
                      -- for checking partially evaluated definitions
                      -- or for use outside of the main compilation

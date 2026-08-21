@@ -1,0 +1,6 @@
+:t Alias.foo
+:t Alias.bar
+:t Alias.Inside.fact
+Alias.foo
+Alias.Inside.fact 4
+:q

@@ -12,6 +12,7 @@ import TTImp.Elab.Check
 import TTImp.Elab.Delayed
 import TTImp.TTImp
 
+import Data.Maybe
 import Data.String
 import Data.Vect
 
@@ -73,12 +74,21 @@ expandAmbigName mode nest env orig args (IVar fc x) exp
     lookupUN Nothing _ = Nothing
     lookupUN (Just n) sm = lookup n sm
 
+    unqualified : Name -> Bool
+    unqualified (NS _ _) = False
+    unqualified _ = True
+
     visible : (Name, Int, GlobalDef) -> Core Bool
     visible (n, i, def)
-        = do let NS ns x = fullname def
+        = do let NS ns nm = fullname def
                  | _ => pure True
-             if !(isVisible ns)
-                then pure $ visibleInAny (!getNS :: !getNestedNS) (NS ns x)
+             -- An unqualified postfix projection stays a candidate, even from
+             -- an `import qualified`, so that it can be resolved by type
+             inScope <- if !(isQualifiedOnly ns)
+                           then pure (isJust (isRF nm) && unqualified x)
+                           else isVisible ns
+             if inScope
+                then pure $ visibleInAny (!getNS :: !getNestedNS) (NS ns nm)
                                          (collapseDefault $ visibility def)
                 else pure False
 

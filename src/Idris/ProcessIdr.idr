@@ -98,37 +98,55 @@ readModule : {auto c : Ref Ctxt Defs} ->
              (full : Bool) -> -- load everything transitively (needed for REPL and compiling)
              FC ->
              (visible : Bool) -> -- Is import visible to top level module?
+             (qual : Bool) -> -- Is this a `qualified` import (names only via qualifier)?
              (imp : ModuleIdent) -> -- Module name to import
              (as : Namespace) -> -- Namespace to import into
              Core ()
-readModule full loc vis imp as
+readModule full loc vis qual imp as
     = do defs <- get Ctxt
          let False = (imp, vis, as) `elem` map snd (allImported defs)
-             | True => when vis (setVisible (miAsNamespace imp))
+             | True => when vis (setImportVisibility qual imp as)
          Right fname <- nsToPath loc imp
                | Left err => throw err
          Just (syn, hash, more) <- readFromTTC False {extra = SyntaxInfo}
                                                   loc vis fname imp as
-              | Nothing => when vis (setVisible (miAsNamespace imp)) -- already loaded, just set visibility
+              | Nothing => when vis (setImportVisibility qual imp as) -- already loaded, just set visibility
          extendSyn syn
 
          defs <- get Ctxt
          modNS <- getNS
-         when vis $ setVisible (miAsNamespace imp)
+         when vis $ setImportVisibility qual imp as
          traverse_ (\ mimp =>
                        do let m = fst mimp
                           let reexp = fst (snd mimp)
-                          let as = snd (snd mimp)
-                          when (reexp || full) $ readModule full loc reexp m as) more
+                          let qual = fst (snd (snd mimp))
+                          let as = snd (snd (snd mimp))
+                          when (reexp || full) $ readModule full loc reexp qual m as) more
          setNS modNS
+  where
+    -- Set up the visibility for an imported module. For a `qualified`
+    -- import, the module's names are only accessible via an explicit
+    -- qualifier: the module namespace itself (`import qualified M`) or the
+    -- `as` alias (`import qualified M as N`). In the latter case, the
+    -- original module namespace is not made visible, so `M.foo` is
+    -- inaccessible while `N.foo` is.
+    setImportVisibility : Bool -> ModuleIdent -> Namespace -> Core ()
+    setImportVisibility qual imp as
+        = do let modNS = miAsNamespace imp
+             if qual
+                then do setQualifiedOnly modNS
+                        if as /= modNS
+                           then setVisible as
+                           else setVisible modNS
+                else setVisible modNS
 
 readImport : {auto c : Ref Ctxt Defs} ->
              {auto u : Ref UST UState} ->
              {auto s : Ref Syn SyntaxInfo} ->
              Bool -> Import -> Core ()
 readImport full imp
-    = do readModule full (loc imp) True (path imp) (nameAs imp)
-         addImported (path imp, reexport imp, nameAs imp)
+    = do readModule full (loc imp) True (qualified imp) (path imp) (nameAs imp)
+         addImported (path imp, reexport imp, qualified imp, nameAs imp)
 
 ||| Adds new import to the namespace without changing the current top-level namespace
 export
@@ -151,7 +169,7 @@ readImportMeta imp
 
 prelude : Import
 prelude = MkImport (MkFC (Virtual Interactive) (0, 0) (0, 0)) False
-                     (nsAsModuleIdent preludeNS) preludeNS
+                     (nsAsModuleIdent preludeNS) preludeNS False
 
 export
 readPrelude : {auto c : Ref Ctxt Defs} ->
@@ -182,14 +200,15 @@ readAsMain fname
          ustm <- get UST
          traverse_ (\ mimp =>
                        do let m = fst mimp
-                          let as = snd (snd mimp)
-                          readModule True emptyFC True m as
-                          addImported (m, True, as)) more
+                          let qual = fst (snd (snd mimp))
+                          let as = snd (snd (snd mimp))
+                          readModule True emptyFC True qual m as
+                          addImported (m, True, qual, as)) more
 
          -- also load the prelude, if required, so that we have access to it
          -- at the REPL.
          when (not (noprelude !getSession)) $
-              readModule True emptyFC True (nsAsModuleIdent preludeNS) preludeNS
+              readModule True emptyFC True False (nsAsModuleIdent preludeNS) preludeNS
 
          -- We're in the namespace from the first TTC, so use the next name
          -- from that for the fresh metavariable name generation

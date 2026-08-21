@@ -43,6 +43,16 @@ Eq UnelabMode where
    ImplicitHoles == ImplicitHoles = True
    _ == _ = False
 
+-- Unsugared terms may be elaborated again (e.g. record projections), so a
+-- name must stay accessible. For an `import qualified M as N`, `M.x` isn't,
+-- but `N.x` is.
+noSugarName : {auto c : Ref Ctxt Defs} -> Name -> Core Name
+noSugarName fn@(NS ns _)
+    = if !(isQualifiedOnly ns)
+         then aliasName fn
+         else pure fn
+noSugarName fn = pure fn
+
 mutual
 
   ||| Unelaborate a call to a case expression as an inline case.
@@ -211,7 +221,7 @@ mutual
                                  _ => pure (IVar fc (MkKindedName (Just nt) n n), gErased fc)
            fn <- getFullName n
            n' <- case umode of
-                      NoSugar _ => pure fn
+                      NoSugar _ => noSugarName fn
                       _ => aliasName fn
            log "unelab.var" 50 $
              unwords [ "Found name:", show n

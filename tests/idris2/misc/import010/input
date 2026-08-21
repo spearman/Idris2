@@ -1,0 +1,6 @@
+:t Mod.foo
+:t Mod.bar
+:t Mod.Inside.fact
+Mod.foo
+Mod.Inside.fact 4
+:q
